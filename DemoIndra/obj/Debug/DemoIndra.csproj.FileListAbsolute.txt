@@ -1,0 +1,10 @@
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\DemoIndra.exe.config
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\DemoIndra.exe
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\DemoIndra.pdb
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\Hyland.Types.dll
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\Hyland.Unity.dll
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\UnityAPI.dll
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\bin\Debug\UnityAPI.pdb
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\obj\Debug\DemoIndra.csprojResolveAssemblyReference.cache
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\obj\Debug\DemoIndra.exe
+D:\OFICINA\OnBase\Desarrollos\DemoIndra\DemoIndra\obj\Debug\DemoIndra.pdb
