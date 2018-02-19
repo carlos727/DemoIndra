@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Hyland.Unity;
 using Hyland.Unity.Extensions;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using DemoIndra.Core;
 
 namespace DemoIndra
 {
@@ -13,22 +12,9 @@ namespace DemoIndra
     {
         static void Main(string[] args)
         {
-            const string URL = "http://192.168.30.192/appserver/service.asmx";
-            const string USERNAME = "MANAGER";
-            const string PASSWORD = "PASSWORD";
-            const string DATA_SRC = "OnBase";
-            const string DOCTYPE = "FacturaTest";
-            const string KEYWORD1 = "Invoice #";
-            const string KEYWORD2 = "Invoice Amount";
-            const string KEYWORD3 = "Invoice Date";
-            const string FILEPATH = @"C:\UploadToOnbase\upload.txt";
-            const string IMAGEDIR = @"C:\UploadToOnbase";
-            const char SEPARATOR = ';';
-            const string DATEFORMAT = "dd/MM/yyyy";
-            Random rand = new Random();
-            DateTime date = DateTime.Now;
+            Configuration Config = new Configuration(@"C:\UploadToOnbase\config.xml");
 
-            Application indra_app = ConnectToOnBase(URL, USERNAME, PASSWORD, DATA_SRC);
+            Application indra_app = ConnectToOnBase(Config.URL, Config.USERNAME, Config.PASSWORD, Config.DATASRC);
 
             if (indra_app == null)
             {
@@ -36,11 +22,39 @@ namespace DemoIndra
             }
             Console.WriteLine("Conexión establecida...");
 
-            string[] files = Directory.GetFiles(IMAGEDIR, "*", SearchOption.TopDirectoryOnly);
-            files.ToList().ForEach(file => {
-                long document = UploadNewDocuent(indra_app, file, DOCTYPE, KEYWORD1, KEYWORD2, KEYWORD3, rand.Next(400, 500), rand.Next(100000, 500000), date.ToString(DATEFORMAT));
-                Console.WriteLine("Nuevo documento importado a OnBase ID: " + document);
-            });            
+            if (!File.Exists(Config.FILEPATH))
+            {
+                throw new Exception("El archivo " + Config.FILEPATH + " no existe.");
+            }
+            Console.WriteLine("Archivo listo para ser leído...");
+
+            StreamReader fileContent = new StreamReader(Config.FILEPATH);
+            string line;
+            while ((line = fileContent.ReadLine()) != null)
+            {
+                // Valores de la line x del archivo fuente
+                string[] parameters = line.Replace(Environment.NewLine, string.Empty).Split(Config.SEPARATOR);
+
+                // Diccionario keyword: valor
+                Dictionary<string,string> keywords = new Dictionary<string, string>();
+                int i = 0;
+                while (i < parameters.Length)
+                {
+                    keywords.Add(Config.ORDER[i], parameters[i]);
+                    i++;
+                }
+
+                if (File.Exists(keywords["nombre_archivo"]))
+                {
+                    long document = UploadNewDocuent(indra_app, Config.DOCTYPE, keywords);
+                    Console.WriteLine("Nuevo documento importado a OnBase ID: " + document);                    
+                }
+                else
+                {
+                    Console.WriteLine("El archivo " + keywords["nombre_archivo"] + " no existe.");
+                }                
+            }
+            fileContent.Close();    
 
             DisconnectFromOnBase(indra_app);
 
@@ -108,12 +122,12 @@ namespace DemoIndra
             return app;
         }
 
-        static long UploadNewDocuent(Application app, string filePath, string docType, string key1, string key2, string key3, int value1, int value2, string date)
+        static long UploadNewDocuent(Application app, string docType, Dictionary<string, string> keywords)
         {
             try
             {
                 long newDocID = -1;
-                using (PageData pageData = app.Core.Storage.CreatePageData(filePath))
+                using (PageData pageData = app.Core.Storage.CreatePageData(keywords["archivo"]))
                 {
                     // Get Document Type
                     DocumentType documentType = app.Core.DocumentTypes.Find(docType);
@@ -132,48 +146,28 @@ namespace DemoIndra
                     //Create Document Properties Object
                     StoreNewDocumentProperties newDocProps = app.Core.Storage.CreateStoreNewDocumentProperties(documentType, imageFileType);
 
-                    //Get Keyword Types
-                    KeywordType keyType1 = app.Core.KeywordTypes.Find(key1);
-                    if (keyType1 == null)
+                    foreach(string key in keywords.Keys)
                     {
-                        throw new Exception("No se pudo encontrar el keyword type: " + key1);
-                    }
+                        if (!key.Equals("nombre_archivo"))
+                        {
+                            //Get Keyword Types
+                            KeywordType keyType = app.Core.KeywordTypes.Find(key);
+                            if (keyType == null)
+                            {
+                                throw new Exception("No se pudo encontrar el keyword type: " + key);
+                            }
 
-                    KeywordType keyType2 = app.Core.KeywordTypes.Find(key2);
-                    if (keyType2 == null)
-                    {
-                        throw new Exception("No se pudo encontrar el keyword type: " + key2);
-                    }
+                            // Create Keyword Objects
+                            Keyword keyword = null;
+                            if (!keyType.TryCreateKeyword(keywords[key], out keyword))
+                            {
+                                throw new Exception(key + " no pudo ser creado.");
+                            }
 
-                    KeywordType keyType3 = app.Core.KeywordTypes.Find(key3);
-                    if (keyType3 == null)
-                    {
-                        throw new Exception("No se pudo encontrar el keyword type: " + key3);
-                    }
-
-                    // Create Keyword Objects
-                    Keyword keyword1 = null;
-                    if (!keyType1.TryCreateKeyword(value1, out keyword1))
-                    {
-                        throw new Exception(key1 + " no pudo ser creado.");
-                    }
-
-                    Keyword keyword2 = null;
-                    if (!keyType2.TryCreateKeyword(value2, out keyword2))
-                    {
-                        throw new Exception(key2 + " no pudo ser creado.");
-                    }
-
-                    Keyword keyword3 = null;
-                    if (!keyType3.TryCreateKeyword(date, out keyword3))
-                    {
-                        throw new Exception(key3 + " no pudo ser creado.");
-                    }
-
-                    // Add the new keywords to our properties.
-                    newDocProps.AddKeyword(keyword1);
-                    newDocProps.AddKeyword(keyword2);
-                    newDocProps.AddKeyword(keyword3);
+                            // Add the new keywords to our properties.
+                            newDocProps.AddKeyword(keyword);
+                        }
+                    }                   
 
                     // Create the new document.
                     Document newDocument = app.Core.Storage.StoreNewDocument(pageData, newDocProps);
